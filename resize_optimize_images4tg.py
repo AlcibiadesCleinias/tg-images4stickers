@@ -22,26 +22,19 @@ DEFAULT_QUALITY = 85
 
 def resize_image(path2image, max_width=MAX_WIDTH, max_heigh=MAX_HEIGH) -> Image:
     ''' It returns resized image. '''
-    
+
     path2image = Path(path2image)
     img = Image.open(path2image)
     width, heigh = img.size
-    
-    if width <= max_width and heigh <= max_heigh:
-        pass
-    else:
-        ratio1 = max_width / width
-        ratio2 = max_heigh / heigh
-        ratio = min(ratio1, ratio2)
-        img = img.resize((int(width*ratio), int(heigh*ratio)), Image.ANTIALIAS)
+    ratio = min(max_width / width, max_heigh / heigh)
+    img = img.resize((int(width*ratio), int(heigh*ratio)), Image.ANTIALIAS)
     return img
 
 def save_optimized_png(img, path2save, quality=85):
     '''  We save img with compression quality. '''
-    print(quality)
 
     img.save(path2save, optimize=True, quality=quality)
-    
+
 def main(args):
 
     logs_new_saved = []
@@ -50,13 +43,13 @@ def main(args):
         for f in tqdm(files, position=0):
             if f.rsplit('.', 1)[-1].lower() not in ['jpg', 'jpeg', 'png']:
                 continue
-    
+
             file_path = os.path.join(path, f)
             resized_img = resize_image(file_path, args.max_width, args.max_heigh)
-            
+
             new_name = f.replace('/','').lower().replace('.jpg', '.png').replace('.jpeg', '.png')
             path2save = os.path.join(args.dir_readies, new_name)
-            
+
             if not path2save.split('/')[-1] in os.listdir(args.dir_readies) or args.force_save:
                 save_optimized_png(resized_img, str(Path(path2save).with_suffix('.png')), quality=args.quality)
                 logs_new_saved.append(path2save)
@@ -68,13 +61,13 @@ def main(args):
         print("\n".join(logs_new_saved))
     else:
         print('No new files.')
-        
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--max-width', type=int, default=MAX_WIDTH,
                         help="Max width.")
-    
+
     parser.add_argument('--max-heigh', type=int, default=MAX_HEIGH,
                     help="Max heigh.")
 
@@ -86,7 +79,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--quality', type=int, default=DEFAULT_QUALITY,
                         help="Desirable quality for resized files in percents.")
-    
+
     parser.add_argument('--force-save', type=bool, default=False,
                         help="Define if you want to rewrite files in dir-readies.")
 
