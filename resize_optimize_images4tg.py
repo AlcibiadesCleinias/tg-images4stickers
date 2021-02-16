@@ -9,7 +9,7 @@ Saved images by defualt satisfy requirements for @stikers tg-bot.
 
 from PIL import Image
 from pathlib import Path
-import os
+import os, shutil
 from tqdm import tqdm
 import argparse
 
@@ -35,7 +35,21 @@ def save_optimized_png(img, path2save, quality=85):
 
     img.save(path2save, optimize=True, quality=quality)
 
+def rm_file(file_path):
+    if os.path.isfile(file_path) or os.path.islink(file_path):
+        os.unlink(file_path)
+
+def clean_dir(dir_path):
+    for filename in os.listdir(dir_path):
+        if filename == '.gitignore':
+            pass
+        else:
+            rm_file(os.path.join(dir_path, filename))
+
 def main(args):
+
+    if args.clean_folders:
+         clean_dir(args.dir_readies)
 
     logs_new_saved = []
     for data in os.walk(args.dir_originals):
@@ -46,6 +60,8 @@ def main(args):
 
             file_path = os.path.join(path, f)
             resized_img = resize_image(file_path, args.max_width, args.max_heigh)
+            if args.clean_folders:
+                rm_file(file_path)
 
             new_name = f.replace('/','').lower().replace('.jpg', '.png').replace('.jpeg', '.png')
             path2save = os.path.join(args.dir_readies, new_name)
@@ -82,6 +98,10 @@ if __name__ == '__main__':
 
     parser.add_argument('--force-save', type=bool, default=False,
                         help="Define if you want to rewrite files in dir-readies.")
+
+    parser.add_argument('--clean-folders', action='store_true', default=True,
+                        help="""Define if you we should clean both folders: with
+                        ready for tg before and with original after operation.""")
 
     args, unparsed = parser.parse_known_args()
     if unparsed and len(unparsed) > 0:
