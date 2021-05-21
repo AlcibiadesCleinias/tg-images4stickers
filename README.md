@@ -10,8 +10,7 @@ python resize_optimize_images4tg.py --help
 
 2. Run docker image
 ```
-docker build -t tiny_script .
-docker container run --rm -v $(pwd):/script --name my1 -t tiny_script
+docker build -t tiny_script . && docker container run --rm -v $(pwd):/script --name my1 -t tiny_script
 ```
 Note:
 > you can simple pass arguments for the script .py file, e.g.:
