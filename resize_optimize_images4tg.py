@@ -1,43 +1,47 @@
 """
-We go through passed dirs, i.e. all dirs which are inside the passed
-and reseize&optimize images with saving PNGs into dir-readies.
+We go through passed dir, i.e. through all nested dirs as well
+and reseize&optimize images with saving PNGs into dir for processed
+images.
 
-Saved images by defualt satisfy requirements for @stikers tg-bot.
+Processed images satisfy requirements for @stikers tg-bot.
 
->> python3 resize_optimize_images4tg.py
+E.g.
+>>> python3 resize_optimize_images4tg.py
 """
 
 from PIL import Image
 from pathlib import Path
-import os, shutil
+import os
 from tqdm import tqdm
 import argparse
 
 MAX_WIDTH = 512
 MAX_HEIGH = 512
-DIR_ORIGINALS = './originals'
-DIR_READIES = './ready4tg'
+DEFAULT_DIR_WITH_ORIGINALS = './originals'
+DEFAULT_DIR_WITH_READIES = './ready4tg'
 SUPPORTED_FORMATS = ['jpg', 'jpeg', 'png']
 DEFAULT_QUALITY = 85
 
+
 def resize_image(path2image, max_width=MAX_WIDTH, max_heigh=MAX_HEIGH) -> Image:
-    ''' It returns resized image. '''
+    """It returns the resized image."""
 
     path2image = Path(path2image)
     img = Image.open(path2image)
     width, heigh = img.size
     ratio = min(max_width / width, max_heigh / heigh)
-    img = img.resize((int(width*ratio), int(heigh*ratio)), Image.ANTIALIAS)
+    img = img.resize((int(width * ratio), int(heigh * ratio)), Image.ANTIALIAS)
     return img
 
-def save_optimized_png(img, path2save, quality=85):
-    '''  We save img with compression quality. '''
 
+def save_optimized_png(img, path2save, quality=DEFAULT_QUALITY):
     img.save(path2save, optimize=True, quality=quality)
+
 
 def rm_file(file_path):
     if os.path.isfile(file_path) or os.path.islink(file_path):
         os.unlink(file_path)
+
 
 def clean_dir(dir_path):
     for filename in os.listdir(dir_path):
@@ -46,37 +50,38 @@ def clean_dir(dir_path):
         else:
             rm_file(os.path.join(dir_path, filename))
 
+
 def main(args):
-
     if args.clean_folders:
-         clean_dir(args.dir_readies)
+        clean_dir(args.dir_readies)
 
-    logs_new_saved = []
-    for data in os.walk(args.dir_originals):
-        path, subdirs, files = data
-        for f in tqdm(files, position=0):
-            if f.rsplit('.', 1)[-1].lower() not in ['jpg', 'jpeg', 'png']:
-                continue
+    saved = []
+    file_paths = [
+        os.path.join(dirpath, file) for (dirpath, subdirs, files) in os.walk(args.dir_originals) for file in files
+        if file.rsplit('.', 1)[-1].lower() in SUPPORTED_FORMATS
+    ]
 
-            file_path = os.path.join(path, f)
-            resized_img = resize_image(file_path, args.max_width, args.max_heigh)
-            if args.clean_folders:
-                rm_file(file_path)
+    for file_path in tqdm(file_paths, position=0):
 
-            new_name = f.replace('/','').lower().replace('.jpg', '.png').replace('.jpeg', '.png')
-            path2save = os.path.join(args.dir_readies, new_name)
+        resized_img = resize_image(file_path, args.max_width, args.max_heigh)
+        if args.clean_folders:
+            rm_file(file_path)
 
-            if not path2save.split('/')[-1] in os.listdir(args.dir_readies) or args.force_save:
-                save_optimized_png(resized_img, str(Path(path2save).with_suffix('.png')), quality=args.quality)
-                logs_new_saved.append(path2save)
-            else:
-                pass
+        new_name = file_path.replace('/', '').lower().replace('.jpg', '.png').replace('.jpeg', '.png')
+        path2save = os.path.join(args.dir_readies, new_name)
 
-    if logs_new_saved:
+        if not path2save.split('/')[-1] in os.listdir(args.dir_readies) or args.force_save:
+            save_optimized_png(resized_img, str(Path(path2save).with_suffix('.png')), quality=args.quality)
+            saved.append(path2save)
+        else:
+            pass
+
+    if saved:
         print('New file(s):')
-        print("\n".join(logs_new_saved))
+        print("\n".join(saved))
     else:
         print('No new files.')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -85,12 +90,12 @@ if __name__ == '__main__':
                         help="Max width.")
 
     parser.add_argument('--max-heigh', type=int, default=MAX_HEIGH,
-                    help="Max heigh.")
+                        help="Max heigh.")
 
-    parser.add_argument('--dir-originals', type=str, default=DIR_ORIGINALS,
+    parser.add_argument('--dir-originals', type=str, default=DEFAULT_DIR_WITH_ORIGINALS,
                         help="Dir with images to be proceeded.")
 
-    parser.add_argument('--dir-readies', type=str, default=DIR_READIES,
+    parser.add_argument('--dir-readies', type=str, default=DEFAULT_DIR_WITH_READIES,
                         help="Dir with images ready to be posted to tg-stickers-bot.")
 
     parser.add_argument('--quality', type=int, default=DEFAULT_QUALITY,
@@ -100,8 +105,7 @@ if __name__ == '__main__':
                         help="Define if you want to rewrite files in dir-readies.")
 
     parser.add_argument('--clean-folders', action='store_true', default=True,
-                        help="""Define if you we should clean both folders: with
-                        ready for tg before and with original after operation.""")
+                        help="""If the script should clean both folders before proceed the action.""")
 
     args, unparsed = parser.parse_known_args()
     if unparsed and len(unparsed) > 0:
